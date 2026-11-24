@@ -1,0 +1,4 @@
+{ "name": "plainly", "private": true, "type": "module", "license": "MIT",
+  "description": "Plainly: turn confusing official letters into plain next steps, privately",
+  "scripts": { "test": "node tests/extract.test.mjs", "serve": "cd docs && python3 -m http.server 8000" },
+  "devDependencies": { "chrono-node": "2.7.7" } }

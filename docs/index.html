@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plainly</title>
+  <meta name="description" content="Snap or paste a confusing official letter. Plainly tells you what it is, what to do, and by when — in plain words, in your language, read aloud. Private: it all runs on your device." />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/app.css?v=1" />
+  <script>try { const t = localStorage.getItem('plainly:theme'); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top">
+    <a class="brand" href="#" id="home" aria-label="Plainly home">
+      <svg viewBox="0 0 36 28" aria-hidden="true"><rect x="2" y="4" width="32" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M3 7l15 10L33 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><circle cx="29" cy="7" r="5" fill="var(--sun)" stroke="var(--bg)" stroke-width="2"/></svg>
+      <span>Plainly</span>
+    </a>
+    <span class="private">🔒 Your letter never leaves this device</span>
+    <button class="icon-btn" id="btn-theme" aria-label="Switch light or dark theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg></button>
+  </header>
+
+  <main id="main">
+    <!-- INPUT -->
+    <section id="intake" class="intake">
+      <div class="intro">
+        <h1>Confusing letter?<br><span>Get the plain version.</span></h1>
+        <p class="lede">Snap a photo or paste the text of a letter from an agency, landlord, utility, court or school. Plainly tells you <b>what it is</b>, <b>what to do</b>, and <b>by when</b>: in plain words, in your language, read out loud.</p>
+        <ul class="trust">
+          <li>📅 Finds the real deadline</li>
+          <li>🗣️ 8 languages + read aloud</li>
+          <li>📖 Explains the jargon</li>
+          <li>🔒 Private and free: no account, nothing uploaded</li>
+        </ul>
+      </div>
+
+      <div class="card input-card">
+        <div class="tabs" role="tablist" aria-label="How to add your letter">
+          <button role="tab" aria-selected="true" aria-controls="pane-photo" id="tab-photo" data-tab="photo">📷 Photo or PDF</button>
+          <button role="tab" aria-selected="false" aria-controls="pane-paste" id="tab-paste" data-tab="paste">✍️ Paste text</button>
+        </div>
+        <div id="pane-photo" role="tabpanel" aria-labelledby="tab-photo">
+          <label class="drop" id="drop" tabindex="0">
+            <input type="file" id="file" accept="image/*,application/pdf" capture="environment" hidden />
+            <span class="drop-icon" aria-hidden="true">📄</span>
+            <strong>Take a photo or choose a file</strong>
+            <span>Photo of the letter (JPG, PNG) or PDF · flat, well-lit, all edges showing</span>
+          </label>
+          <div class="progress" id="ocr-progress" hidden><i></i><span>Reading the letter…</span></div>
+        </div>
+        <div id="pane-paste" role="tabpanel" aria-labelledby="tab-paste" hidden>
+          <textarea id="paste" rows="8" placeholder="Paste the letter here…" aria-label="Letter text"></textarea>
+        </div>
+
+        <div class="options">
+          <label class="field">Explain in
+            <select id="lang"></select>
+          </label>
+          <label class="switch">
+            <input type="checkbox" id="ai-toggle" />
+            <span class="slider" aria-hidden="true"></span>
+            <span>On-device AI<small id="ai-hint">Clearer wording &amp; translation · ~1 GB first time · needs WebGPU</small></span>
+          </label>
+        </div>
+        <div class="progress" id="ai-progress" hidden><i></i><span>Loading the on-device AI…</span></div>
+        <button class="btn primary big" id="btn-go">Explain my letter</button>
+        <div class="samples"><span>No letter handy? Try one:</span><div id="sample-btns"></div></div>
+      </div>
+    </section>
+
+    <!-- RESULT -->
+    <section id="result" class="result" hidden aria-live="polite">
+      <div class="result-top">
+        <button class="btn ghost" id="btn-new">← Another letter</button>
+        <div class="result-actions">
+          <button class="btn" id="btn-read" aria-pressed="false">🔊 Read aloud</button>
+          <button class="btn" id="btn-cal">📅 Add deadline to calendar</button>
+          <button class="btn" id="btn-print">🖨️ Print checklist</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <article class="card plain" id="plain">
+          <div class="banner" id="banner"></div>
+          <p class="kind" id="kind"></p>
+          <h2 id="summary"></h2>
+          <p class="source" id="source"></p>
+          <h3>What to do</h3>
+          <ol class="steps" id="steps"></ol>
+          <div class="ifnot" id="ifnot" hidden><b>If you do nothing</b><p></p></div>
+          <div class="script-box">
+            <button class="btn" id="btn-script">☎️ Write me a phone script</button>
+            <div class="script" id="script" hidden></div>
+          </div>
+        </article>
+
+        <aside class="side">
+          <div class="card facts">
+            <h3>Key details</h3>
+            <dl id="facts"></dl>
+          </div>
+          <div class="card words">
+            <h3>Words explained</h3>
+            <dl id="words"></dl>
+          </div>
+        </aside>
+      </div>
+
+      <details class="card original">
+        <summary>Show the original letter (difficult words highlighted)</summary>
+        <div class="letter" id="letter"></div>
+      </details>
+      <p class="disclaimer">Plainly helps you understand a letter. It is not legal advice. For free help, call <b>211</b> or find free legal aid at <a href="https://www.lawhelp.org" target="_blank" rel="noopener">LawHelp.org</a>. Always check the original letter.</p>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>Plainly reads your letter with on-device text recognition (Tesseract) and, if you turn it on, explains it with an AI model running on your own GPU (WebLLM). Nothing is uploaded or stored.</p>
+    <p>Built for the <a href="https://creators-ai-winter-challenge.devpost.com/" target="_blank" rel="noopener">Creators AI Winter Challenge</a> · <a href="https://github.com/DavidAndree/plainly" target="_blank" rel="noopener">Source code</a></p>
+  </footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+  <script type="module" src="js/app.js?v=1"></script>
+</body>
+</html>
