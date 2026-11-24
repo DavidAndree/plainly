@@ -1,7 +1,7 @@
 import * as chrono from 'https://cdn.jsdelivr.net/npm/chrono-node@2.7.7/+esm';
-import { createExtractor, findTerms, GLOSSARY } from './extract.js?v=2';
-import { samples } from './samples.js?v=2';
-import { LANGS, aiSupported, aiReady, loadAI, explain, callScript } from './ai.js?v=2';
+import { createExtractor, findTerms, GLOSSARY } from './extract.js?v=3';
+import { samples } from './samples.js?v=3';
+import { LANGS, aiSupported, aiReady, loadAI, explain, callScript } from './ai.js?v=3';
 
 const TESSERACT = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.esm.min.js';
 const { extract } = createExtractor(chrono);
@@ -42,11 +42,24 @@ file.addEventListener('change', () => { readFile(file.files[0]); file.value = ''
 function progress(id, p, text) { const el = $(id); el.hidden = false; $('i', el).style.width = `${Math.round(p * 100)}%`; $('span', el).textContent = text; }
 
 async function ocr(image) {
-  const { createWorker } = await import(TESSERACT);
-  const worker = await createWorker('eng', 1, { logger: (m) => { if (m.status) progress('#ocr-progress', m.progress || 0, `${m.status[0].toUpperCase()}${m.status.slice(1)}…`); } });
-  const { data } = await worker.recognize(image);
-  await worker.terminate();
-  return data.text;
+  const mod = await import(TESSERACT);
+  const createWorker = mod.createWorker || mod.default?.createWorker; // the ESM build exports a default object
+  let fail;
+  const failed = new Promise((_, reject) => { fail = reject; });
+  const timeout = setTimeout(() => fail(new Error('Text reader timed out')), 120000);
+  try {
+    // Pinned asset locations, so OCR doesn't depend on library defaults.
+    const worker = await Promise.race([createWorker('eng', 1, {
+      workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
+      corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
+      langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int',
+      logger: (m) => { if (m.status) progress('#ocr-progress', m.progress || 0, `${m.status[0].toUpperCase()}${m.status.slice(1)}…`); },
+      errorHandler: (e) => fail(e instanceof Error ? e : new Error(String(e))),
+    }), failed]);
+    const { data } = await Promise.race([worker.recognize(image), failed]);
+    worker.terminate();
+    return data.text;
+  } finally { clearTimeout(timeout); }
 }
 
 async function readFile(f) {
