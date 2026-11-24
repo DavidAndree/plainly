@@ -1,7 +1,7 @@
 import * as chrono from 'https://cdn.jsdelivr.net/npm/chrono-node@2.7.7/+esm';
-import { createExtractor, findTerms, GLOSSARY } from './extract.js?v=1';
-import { samples } from './samples.js?v=1';
-import { LANGS, aiSupported, aiReady, loadAI, explain, callScript } from './ai.js?v=1';
+import { createExtractor, findTerms, GLOSSARY } from './extract.js?v=2';
+import { samples } from './samples.js?v=2';
+import { LANGS, aiSupported, aiReady, loadAI, explain, callScript } from './ai.js?v=2';
 
 const TESSERACT = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.esm.min.js';
 const { extract } = createExtractor(chrono);
@@ -106,18 +106,22 @@ async function run() {
   try {
     const r = extract(text);
     const lang = $('#lang').value;
-    const moneyDue = r.money.find((m) => new RegExp(`(due|balance|owe|pay|arrears)[^.]{0,60}\\${m.replace('$', '')}|\\${m.replace('$', '')}[^.]{0,40}(due|balance)`, 'i').test(text)) || r.money[0];
+    const moneyDue = r.amountDue;
     const facts = {
-      deadline: r.deadline ? longDate(r.deadline.date) : null,
+      deadline: r.deadline ? longDate(r.deadline.date) : null, deadlineSentence: r.deadline?.sentence || null,
       money: moneyDue || null, phone: r.phones[0] || null, site: r.sites[0] || null,
       ref: r.refs[0] ? `${r.refs[0].label} ${r.refs[0].value}` : null,
     };
-    let plain = null;
+    // Rules decide the facts; the on-device AI only simplifies and translates those verified sentences.
+    let plain = ruleSummary(r, facts, text);
     if ($('#ai-toggle').checked && aiSupported() && await warmAI()) {
       btn.textContent = 'Writing it in plain words…';
-      try { plain = { ...(await explain(text, facts, lang)), by: 'ai' }; } catch (e) { console.warn('AI explain failed', e); }
+      try {
+        const out = await explain(plain, facts, lang, r.category.label);
+        if (out.keptOriginal) toast('The translation changed a number, so Plainly is showing the verified English instead.');
+        else plain = { ...out, by: 'ai' };
+      } catch (e) { console.warn('AI explain failed', e); }
     }
-    if (!plain) plain = ruleSummary(r, facts, text);
     current = { text, r, facts, plain, lang: plain.by === 'ai' ? lang : 'en' };
     render();
     if (lang !== 'en' && plain.by !== 'ai') toast('Turn on “On-device AI” to get the explanation in your language.');
@@ -133,6 +137,7 @@ function ruleSummary(r, facts, text) {
   // The core action, trimmed to its verb phrase: "return the enclosed renewal form and verification of income".
   let first = r.steps[0] ? r.steps[0].replace(/^(you must|you need to|to avoid [^,]+,\s*)/i, '').replace(/^please\s+/i, '') : null;
   if (first) first = first.split(/\s\(|,\s| no later than | on or before | by (?=[A-Z0-9])| before (?=[A-Z0-9])/)[0].replace(/\.$/, '').trim();
+  if (first && facts.money && /\b(pay|remit|balance|amount)\b/i.test(first) && !first.includes('$')) first += ` (${facts.money})`;
   const summary = `This is a ${r.category.label.toLowerCase()}${who ? ` from ${who}` : ''}.` +
     (first ? ` You need to ${first.charAt(0).toLowerCase()}${first.slice(1)}${facts.deadline ? ` by ${facts.deadline}` : ''}.` : facts.deadline ? ` The key date is ${facts.deadline}.` : '');
   const plainer = (s) => s.replace(/\bremit\b/gi, 'pay').replace(/\bterminated\b/gi, 'ended').replace(/\bterminate\b/gi, 'end')

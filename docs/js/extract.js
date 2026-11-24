@@ -48,6 +48,11 @@ export function createExtractor(chrono) {
     const deadline = dates.find((d) => d.score > 0) || null;
 
     const money = unique([...clean.matchAll(/\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?/g)].map((m) => m[0].replace(/\s/g, '')));
+    // The amount actually owed: money in a sentence about a balance / amount due, not e.g. the old rent.
+    const MONEY = /\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?/;
+    const dueSent = sents.find((s) => MONEY.test(s) && /\b(past due|balance|amount due|you owe|outstanding|in arrears)\b/i.test(s))
+      || sents.find((s) => MONEY.test(s) && /\b(pay|due)\b/i.test(s));
+    const amountDue = dueSent ? dueSent.match(MONEY)[0].replace(/\s/g, '') : null;
     const phones = unique([...clean.matchAll(/(?:\+?1[-.\s]?)?\(?\b\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b/g)].map((m) => m[0].trim()));
     const sites = unique([...clean.matchAll(/\b(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:gov|org|com|us|net)(?:\/[^\s,)]*)?/gi)].map((m) => m[0].replace(/[.,]$/, '')))
       .filter((s) => !/@/.test(s));
@@ -68,7 +73,7 @@ export function createExtractor(chrono) {
     const severe = SEVERE.test(clean);
     const urgency = daysLeft != null && daysLeft <= 7 ? 'urgent' : (daysLeft != null && daysLeft <= 21) || severe ? 'soon' : 'fyi';
 
-    return { category, deadline, daysLeft, urgency, severe, dates, money, phones, sites, refs, steps, consequences, sentences: sents };
+    return { category, deadline, daysLeft, urgency, severe, dates, money, amountDue, phones, sites, refs, steps, consequences, sentences: sents };
   }
   return { extract };
 }

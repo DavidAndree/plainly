@@ -36,8 +36,9 @@ Official mail is written in language most people struggle with, and missing one 
 Small models can misread or invent dates, and on a shut-off notice a wrong date is worse than none. So Plainly splits the work:
 
 1. A **rule engine** (`docs/js/extract.js`) finds the facts deterministically: every date (with chrono-node), scored by deadline cues ("no later than," "on or before," "due") and penalized for "date of notice." It also finds money amounts, phone numbers, websites, reference numbers, action sentences and consequences, and it classifies the letter type.
-2. The **on-device LLM** (Qwen2.5-1.5B-Instruct via WebLLM, on WebGPU) gets those verified facts and is told to use *only* them for dates, amounts and numbers. Its job is the part rules can't do: plain, warm wording, translation, and the phone script.
-3. Without WebGPU, Plainly still works fully in English using the rule engine and the glossary, with plain-word swaps (remit → pay, terminated → ended).
+2. The rule engine writes a correct plain-English explanation: what the letter is, the one main action with the amount and date, the steps, and the consequence.
+3. The **on-device LLM** (Qwen2.5-1.5B-Instruct via WebLLM, on WebGPU) **never decides facts**. It only *rewrites those verified sentences* at a ~5th-grade level and translates them (small models are far more reliable at rewriting than at reading). A safety net then compares every amount and phone number digit by digit. If the rewrite changed one, Plainly shows the verified English instead and says so.
+4. Without WebGPU, Plainly still works fully in English using the rule engine and the glossary, with plain-word swaps (remit → pay, terminated → ended).
 
 ## Privacy
 
@@ -73,7 +74,7 @@ tests/               extractor tests
 ## Limitations
 
 - OCR quality depends on the photo. Plainly shows the recognized text so you can fix it.
-- The 1.5B on-device model is fast and private but not perfect, so dates and numbers always come from the rule engine. Always check the original letter.
+- The 1.5B on-device model is fast and private but not a professional translator. Wording can be awkward in some languages (for example, "shut-off" rendered as "short circuit" in Spanish), so dates, amounts and numbers always come from the rule engine and are checked. Always check the original letter.
 - Plainly is not legal advice. It points people to 211 and LawHelp.org for free help.
 
 ## Credits and disclosure
